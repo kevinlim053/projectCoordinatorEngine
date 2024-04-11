@@ -1,0 +1,344 @@
+import customtkinter as ctk
+import pypyodbc
+import sys
+sys.path.append(r".\Backend\Project Coordinator Functions")  # moves directory to folder where the JD Edwards webscrapping functions and document drafting functions live
+import jdeNav
+import contractGenV7
+
+
+# Interact with construction database (MS Access) via SQL to update fields with current information
+connection_string = r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ= ##PATH##;'  # Change path here to destination of database file
+connection = pypyodbc.connect(connection_string)
+cursor = connection.cursor()
+
+def getData(field, table):  # Tool to simplify querying the established database
+    query1 = f"""
+SELECT {field}
+FROM {table};
+"""
+    cursor.execute(query1)
+    listedData = []
+    for item in cursor.fetchall():
+        string = item[0]
+        listedData.append(string)
+    return(listedData)
+
+def getDataWhere(field, table, condition):  # Tool to simplify querying the established databse with a given condition
+    query2 = f"""
+SELECT {field}
+FROM {table}
+WHERE type = '{condition}'
+OR type = 'N/A';
+"""
+    cursor.execute(query2)
+    listedData = []
+    for item in cursor.fetchall():
+        string = item[0]
+        listedData.append(string)
+    return(listedData)
+
+properties = getData("propertyName", "graniteBuildingEntities")  # Creates a list of properties present from database
+projectManagers = getData("projectManager", "graniteProjectManagers")  # Creates a list of internal project managers from database
+generalContractors = getDataWhere("vendorPartnerFirm","vendorPartners", "gc")  # Creates a list of general contractor firms from database
+architects = getDataWhere("vendorPartnerFirm","vendorPartners", "arch")  # Creates a list of architectural firms from database
+cmFees = ['0', '1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5']
+contingencyRates = []
+for i in range(0, 26):
+    rate = str(i)
+    contingencyRates.append(rate)
+
+# Button Functions ###################################################################################
+def accounting_ti_report():  # Accounting TI Report: summarizes the costs applied against a given project
+    print("Accounting TI Report function")
+    def getReport():
+        projectNum = projectNum_Entry.get()
+        window2.destroy()
+        jdeNav.getATR(projectNum)
+    root.destroy()
+    window2 =  ctk.CTk()
+    window2.title('Accounting TI Report')
+    generateFrame =  ctk.CTkFrame(window2)
+    generateFrame.pack()
+    projectNum_Label =  ctk.CTkLabel(generateFrame, text= 'Project Number: ')
+    projectNum_Label.grid(row= 0, column= 0)
+    projectNum_Entry =  ctk.CTkEntry(generateFrame)
+    projectNum_Entry.grid(row= 0, column= 1)
+    submit_Button =  ctk.CTkButton(generateFrame, text= "Get Accounting TI Report", command= getReport)
+    submit_Button.grid(row= 1, column= 0, columnspan= 2)
+    window2.mainloop()
+
+def print_contract():  # Contract Report: summarizes the initial terms of a project's initial agreement terms given the assigned contract number
+    print("Print Contract function")
+    def getReport():
+        contractNumber = contractNum_Entry.get()
+        window2.destroy()
+        jdeNav.printContract(contractNumber)
+    root.destroy()
+    window2 =  ctk.CTk()
+    window2.title('Print Contract')
+    generateFrame =  ctk.CTkFrame(window2)
+    generateFrame.pack()
+    contractNum_Label =  ctk.CTkLabel(generateFrame, text= 'Contract Number: ')
+    contractNum_Label.grid(row= 0, column= 0)
+    contractNum_Entry =  ctk.CTkEntry(generateFrame)
+    contractNum_Entry.grid(row= 0, column= 1)
+    submit_Button =  ctk.CTkButton(generateFrame, text= "Get Contract Report", command= getReport)
+    submit_Button.grid(row= 1, column= 0, columnspan= 2)
+    window2.mainloop()
+
+def genTFO():  # posts a  TFO (Tenant Finish Overage) to the system and prepares an invoices for a leasing tenant
+    print("Generate TFO function")
+
+def print_change_order():  # retrieves a project's summary of costs for a given change order number and contract number
+    print("Print Change Order function")
+    def getReport():
+        contractNumber = contractNum_Entry.get()
+        changeOrderNumber = changeOrderNum_Entry.get()
+        jdeNav.printCO(contractNumber, changeOrderNumber)
+    root.destroy()
+    window2 =  ctk.CTk()
+    window2.title('Print Change Order')
+    generateFrame =  ctk.CTkFrame(window2)
+    generateFrame.pack()
+    contractNum_Label =  ctk.CTkLabel(generateFrame, text= 'Contract Number: ')
+    contractNum_Label.grid(row= 0, column= 0)
+    contractNum_Entry =  ctk.CTkEntry(generateFrame)
+    contractNum_Entry.grid(row= 0, column= 1)
+    changeOrderNum_Label =  ctk.CTkLabel(generateFrame, text= 'Change Order:')
+    changeOrderNum_Label.grid(row= 1, column= 0)
+    changeOrderNum_Entry =  ctk.CTkEntry(generateFrame)
+    changeOrderNum_Entry.grid(row= 1, column= 1)
+    submit_Button =  ctk.CTkButton(generateFrame, text= "Print Change Order", command= getReport)
+    submit_Button.grid(row= 2, column= 0, columnspan= 2)
+    window2.mainloop()
+
+def development_summary_report():  # retrieves the development report summarizing budgets and timelines for current year's capital projects
+    print("Development Summary Report function")
+    def getReport():
+        projectNum = projectNum_Entry.get()
+        window2.destroy()
+        jdeNav.developmentSummaryReport(projectNum)
+    root.destroy()
+    window2 =  ctk.CTk()
+    window2.title('Development Summary Report')
+    generateFrame =  ctk.CTkFrame(window2)
+    generateFrame.pack()
+    projectNum_Label =  ctk.CTkLabel(generateFrame, text= 'Project Number: ')
+    projectNum_Label.grid(row= 0, column= 0)
+    projectNum_Entry =  ctk.CTkEntry(generateFrame)
+    projectNum_Entry.grid(row= 0, column= 1)
+    submit_Button =  ctk.CTkButton(generateFrame, text= "Get Development Summary Report", command= getReport)
+    submit_Button.grid(row= 1, column= 0, columnspan= 2)
+    window2.mainloop()
+
+def ar_details_with_aging():  # retrieves most up-to-date AR Report
+    print("A/R Details w/ Aging function")
+    jdeNav.arAge()
+    root.destroy()
+
+def contractGen():  # shortcut to generate a new construction agreement
+    print("Contract Generator function")
+    def getReport():
+        projectName = projectName_Entry.get()
+        propertyName = property_Entry.get()
+        suite = suite_Entry.get()
+        pm = pm_Entry.get()
+        gc = genCon_Entry.get()
+        archi = arch_Entry
+        conSum = conSum_Entry.get()
+        startDate = startDate_Entry.get()
+        subDate = subDate_Entry.get()
+        alternate = alternate_Entry.get("1.0", "end-1c")
+        spec = spec_Entry.get("1.0", "end-1c")
+        contractGenV7.genContract(projectName, propertyName, suite, pm, gc, archi, conSum, conSum, subDate, alternate, spec)
+    root.destroy()
+    window2 =  ctk.CTk()
+    window2.title('Contract Generator')
+    generateFrame =  ctk.CTkFrame(window2)
+    generateFrame.pack()
+    frame3 = ctk.CTkFrame(window2)
+    frame3.pack()
+    projectName_Label =  ctk.CTkLabel(generateFrame, text= 'Project Name: ')
+    projectName_Label.grid(row= 0, column= 0)
+    projectName_Entry =  ctk.CTkEntry(generateFrame)
+    projectName_Entry.grid(row= 0, column= 1)
+    property_Label =  ctk.CTkLabel(generateFrame, text= 'Property:')
+    property_Label.grid(row= 1, column= 0)
+    property_Entry =  ctk.CTkOptionMenu(generateFrame, values= properties)
+    property_Entry.grid(row= 1, column= 1)
+    suite_Label =  ctk.CTkLabel(generateFrame, text= 'Suite Number: ')
+    suite_Label.grid(row= 2, column= 0)
+    suite_Entry =  ctk.CTkEntry(generateFrame)
+    suite_Entry.grid(row= 2, column= 1)
+    pm_Label =  ctk.CTkLabel(generateFrame, text= 'Project Manager:')
+    pm_Label.grid(row= 4, column= 0)
+    pm_Entry =  ctk.CTkOptionMenu(generateFrame, values= projectManagers)
+    pm_Entry.grid(row= 4, column= 1)
+    genCon_Label =  ctk.CTkLabel(generateFrame, text= 'General Contractor: ')
+    genCon_Label.grid(row= 6, column= 0)
+    genCon_Entry =  ctk.CTkOptionMenu(generateFrame, values= generalContractors)
+    genCon_Entry.grid(row= 6, column= 1)
+    arch_Label =  ctk.CTkLabel(generateFrame, text= 'Architect:')
+    arch_Label.grid(row= 7, column= 0)
+    arch_Entry =  ctk.CTkOptionMenu(generateFrame, values= architects)
+    arch_Entry.grid(row= 7, column= 1)
+    conSum_Label =  ctk.CTkLabel(generateFrame, text= 'Contract Sum: ')
+    conSum_Label.grid(row= 9, column= 0)
+    conSum_Entry =  ctk.CTkEntry(generateFrame)
+    conSum_Entry.grid(row= 9, column= 1)
+    startDate_Label =  ctk.CTkLabel(generateFrame, text= 'Construction Start Date:')
+    startDate_Label.grid(row= 10, column= 0)
+    startDate_Entry =  ctk.CTkEntry(generateFrame)
+    startDate_Entry.grid(row= 10, column= 1)
+    subDate_Label =  ctk.CTkLabel(generateFrame, text= 'Substantial Completion Date: ')
+    subDate_Label.grid(row= 11, column= 0)
+    subDate_Entry =  ctk.CTkEntry(generateFrame)
+    subDate_Entry.grid(row= 11, column= 1)
+    alternate_Label =  ctk.CTkLabel(frame3, text= 'Alternates:')
+    alternate_Label.grid(row= 13, column= 0)
+    alternate_Entry =  ctk.CTkTextbox(frame3, height= 100)
+    alternate_Entry.grid(row= 13, column= 1)
+    spec_Label =  ctk.CTkLabel(frame3, text= 'Specifications:')
+    spec_Label.grid(row= 14, column= 0)
+    spec_Entry =  ctk.CTkTextbox(frame3, height= 100)
+    spec_Entry.grid(row= 14, column= 1)
+    submit_Button =  ctk.CTkButton(frame3, text= "Generate Documents", command= getReport)
+    submit_Button.grid(row= 15, column= 0, columnspan= 2)
+    window2.mainloop()
+
+def bidInv():  # generates the bid-leveling spreadsheets
+    print("Bid Invitation function")
+    def getBidForm():
+        projectName = projectName_Entry.get()
+        propName = propertyName_Entry.get()
+        bidDueDate = bidDueDate_Entry.get()
+        bidDueTime = bidDueTime_Entry.get()
+        internalPM = internalPM_Entry.get()
+        rentSF = rentSF_Entry.get()
+    def getBidSum():
+        projectName = projectName_Entry.get()
+        propName = propertyName_Entry.get()
+        bidDueDate = bidDueDate_Entry.get()
+        bidDueTime = bidDueTime_Entry.get()
+        internalPM = internalPM_Entry.get()
+        rentSF = rentSF_Entry.get()
+        cmFee = cmFee_Entry.get()
+        contingency = contingency_Entry.get()
+    root.destroy()
+    window2 =  ctk.CTk()
+    window2.title('Bid Invite Documents Generator')
+    generateFrame =  ctk.CTkFrame(window2)
+    generateFrame.pack()
+    projectName_Label =  ctk.CTkLabel(generateFrame, text= 'Project Name: ')
+    projectName_Label.grid(row= 0, column= 0)
+    projectName_Entry =  ctk.CTkEntry(generateFrame)
+    projectName_Entry.grid(row= 0, column= 1)
+    propertyName_Label = ctk.CTkLabel(generateFrame, text= 'Property: ')
+    propertyName_Label.grid(row= 1, column=0)
+    propertyName_Entry = ctk.CTkOptionMenu(generateFrame, values= properties)
+    propertyName_Entry.grid(row= 1, column=1)
+    suiteNum_Label = ctk.CTkLabel(generateFrame, text='Suite: ')
+    suiteNum_Label.grid(row=0, column=2)
+    suiteNum_Entry = ctk.CTkEntry(generateFrame)
+    suiteNum_Entry.grid(row=0, column=3)
+    bidDueDate_Label = ctk.CTkLabel(generateFrame, text='Due Date (MM/DD/YYYY): ')
+    bidDueDate_Label.grid(row=2, column=0)
+    bidDueDate_Entry = ctk.CTkEntry(generateFrame)
+    bidDueDate_Entry.grid(row=2, column=1)
+    bidDueTime_Label= ctk.CTkLabel(generateFrame, text='Time (##:## am/pm): ')
+    bidDueTime_Label.grid(row=2, column=2)
+    bidDueTime_Entry= ctk.CTkEntry(generateFrame)
+    bidDueTime_Entry.grid(row=2, column=3)
+    internalPM_Label= ctk.CTkLabel(generateFrame, text='Project Manager: ')
+    internalPM_Label.grid(row=4, column=0)
+    internalPM_Entry= ctk.CTkOptionMenu(generateFrame, values= projectManagers)
+    internalPM_Entry.grid(row=4, column=1)
+    rentSF_Label=ctk.CTkLabel(generateFrame, text='Rentable SF: ')
+    rentSF_Label.grid(row=1, column=2)
+    rentSF_Entry=ctk.CTkEntry(generateFrame)
+    rentSF_Entry.grid(row=1, column=3)
+    cmFee_Label=ctk.CTkLabel(generateFrame, text='CM Fee %: ')
+    cmFee_Label.grid(row=6, column=0)
+    cmFee_Entry=ctk.CTkOptionMenu(generateFrame, values = cmFees)
+    cmFee_Entry.grid(row=6, column=1)
+    contingency_Label=ctk.CTkLabel(generateFrame, text='Contingency %: ')
+    contingency_Label.grid(row=6, column=2)
+    contingency_Entry=ctk.CTkOptionMenu(generateFrame, values= contingencyRates)
+    contingency_Entry.grid(row=6, column=3)
+    biddingGCs_Label=ctk.CTkLabel(generateFrame, text='Bidding GCs: ')
+    biddingGCs_Label.grid(row=8, column=0)
+    biddingGCs_Entry1=ctk.CTkOptionMenu(generateFrame, values=generalContractors)
+    biddingGCs_Entry1.grid(row=8, column=1)
+    biddingGCs_Entry2=ctk.CTkOptionMenu(generateFrame, values=generalContractors)
+    biddingGCs_Entry2.grid(row=8, column=2)
+    biddingGCs_Entry3=ctk.CTkOptionMenu(generateFrame, values=generalContractors)
+    biddingGCs_Entry3.grid(row=8, column=3)
+    bidForm_Button =  ctk.CTkButton(generateFrame, text= "Generate Bid Form", command= getBidForm)
+    bidForm_Button.grid(row= 9, column= 1, columnspan= 1)
+    bidSum_Button = ctk.CTkButton(generateFrame, text= "Generate Bid Summary", command= getBidSum)
+    bidSum_Button.grid(row=9, column=2, columnspan= 1)
+    window2.mainloop()
+
+
+# Primary window for interface
+root = ctk.CTk()
+root.title("Project Coordinator Engine")
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("dark-blue")
+
+# Frame with padding and background color, change based off preference of engine layout
+jdeFrame = ctk.CTkFrame(root, corner_radius=10)
+jdeFrame.pack(expand=True, fill="both", padx=60, pady=20)
+
+# Split the interface top-bottom between pulling necessary reports from JD Edwards and document generation
+# ERP interface
+jdeFrame_Label = ctk.CTkLabel(jdeFrame, text= '"ERP PLATFORM"')
+jdeFrame_Label.grid(row=0, column=0, columnspan=2)
+
+# Document generation
+generateFrame = ctk.CTkFrame(root, corner_radius=10)
+generateFrame.pack(expand=True, fill="both", padx=60, pady=20, after=jdeFrame)  # Place generateFrame below jdeFrame
+generateFrame_Label = ctk.CTkLabel(generateFrame, text= "Generate")  # Genrate frame title
+generateFrame_Label.grid(row=0, column=0, columnspan=2)
+
+# Dictionary of button titles:function titles
+jdeButtonFunctions = {
+    "Accounting TI Report": accounting_ti_report,
+    "Print Contract": print_contract,
+    "Generate TFO": genTFO,
+    "Print Change Order": print_change_order,
+    "Development Summary Report": development_summary_report,
+    "A/R Details w/ Aging": ar_details_with_aging,
+}
+
+
+generateButtonFunctions = {
+    "Construction Agreement, Lien Waivers, Precon Agenda, CSC, CFC": contractGen,
+    "Bid Form, Summary, Invitation": bidInv,
+}
+
+
+# Create buttons in the jde frame
+row_num = 1
+col_num = 0
+for title, function in jdeButtonFunctions.items():
+    button = ctk.CTkButton(jdeFrame, text=title, command=function, corner_radius=8)
+    button.grid(row=row_num, column=col_num, sticky="news", padx=20, pady=10)
+    row_num += 1
+    if row_num > 3:
+        row_num = 1
+        col_num += 1
+
+# Create buttons in the generate frame with the same approach as the jde frame
+row_num = 1
+col_num = 0
+for title, function in generateButtonFunctions.items():
+    button = ctk.CTkButton(generateFrame, text=title, command=function, corner_radius=8)
+    button.grid(row=row_num, column=col_num, sticky="news", padx=20, pady=10)
+    row_num += 1
+    if row_num > 3:
+        row_num = 1
+        col_num += 1
+
+# Event loop
+root.mainloop()
